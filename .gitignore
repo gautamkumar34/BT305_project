@@ -1,0 +1,40 @@
+## Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+## Virtual environments (these should not be committed)
+venv/
+venv_*/
+.venv/
+
+## Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+
+## Logs / runtime artifacts
+*.log
+backend.log
+frontend.log
+
+## OS / editor
+.DS_Store
+.idea/
+.vscode/
+.cursor/
+
+## ML models (large, regenerated via training)
+models/
+
+## Generated data (can be re-fetched)
+data/herg_training_final.csv
+data/herg_train_split.csv
+data/herg_validation.csv
+data/herg_val_predictions.csv
+
