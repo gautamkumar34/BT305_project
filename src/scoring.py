@@ -1,6 +1,7 @@
 """
 Molecular scoring module.
-Implements rule-based risk flagging and chemically specific explanations.
+Combines Chemprop MPNN toxicity predictions with rule-based risk flagging
+and chemically specific explanations.
 """
 
 from typing import Dict, Any, List, Optional, Tuple
@@ -9,6 +10,21 @@ from rdkit.Chem import Descriptors
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Lazy-loaded Chemprop predictor (loaded once on first use)
+_predictor = None
+
+def _get_tox_predictor():
+    """Get or initialize the Chemprop toxicity predictor (singleton)."""
+    global _predictor
+    if _predictor is None:
+        try:
+            from src.tox_model import get_predictor
+            _predictor = get_predictor()
+        except Exception as e:
+            logger.warning(f"Chemprop predictor unavailable: {e}")
+            _predictor = None
+    return _predictor
 
 class SimilarityScorer:
     """
@@ -89,10 +105,25 @@ class SimilarityScorer:
         desc_a = self.compute_descriptors(mol_a_smiles)
         desc_b = self.compute_descriptors(mol_b_smiles)
         
-        # Risk flags for both molecules
-        risk_level_a, rules_a, prob_a = self.rule_based_risk_flag(desc_a)
-        risk_level_b, rules_b, prob_b = self.rule_based_risk_flag(desc_b)
-        
+        # Risk flags for both molecules (rule-based tier labels)
+        risk_level_a, rules_a, _ = self.rule_based_risk_flag(desc_a)
+        risk_level_b, rules_b, _ = self.rule_based_risk_flag(desc_b)
+
+        # ML toxicity predictions via Chemprop MPNN
+        predictor = _get_tox_predictor()
+        if predictor is not None:
+            prob_a = predictor.predict_toxicity_prob(mol_a_smiles)
+            prob_b = predictor.predict_toxicity_prob(mol_b_smiles)
+            tox_disclaimer = (
+                "Chemprop MPNN prediction trained on ChEMBL/Tox21 IC50 data. "
+                "Not for clinical use."
+            )
+        else:
+            # Fallback to rule-based probabilities
+            _, _, prob_a = self.rule_based_risk_flag(desc_a)
+            _, _, prob_b = self.rule_based_risk_flag(desc_b)
+            tox_disclaimer = "Prediction based on physicochemical heuristics (model not loaded)."
+
         # Generate explanation
         explanation = self.generate_explanation(
             "Molecule A", "Molecule B", desc_a, desc_b, 
@@ -143,10 +174,10 @@ class SimilarityScorer:
             },
             "descriptor_delta": delta,
             "ml_toxicity": {
-                "prob_a": prob_a,
-                "prob_b": prob_b,
+                "prob_a": round(float(prob_a), 4),
+                "prob_b": round(float(prob_b), 4),
                 "correct_ranking": prob_a > prob_b,
-                "disclaimer": "Prediction based on physicochemical heuristics."
+                "disclaimer": tox_disclaimer
             }
         }
 
