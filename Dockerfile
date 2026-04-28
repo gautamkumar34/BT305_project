@@ -29,4 +29,4 @@ COPY --chown=user . .
 EXPOSE 7860
 
 # Start the app (Point to your main.py and the 'app' object)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "7860"]
