@@ -98,7 +98,8 @@ Combined dataset from three sources:
 | Curated ground truth | 15 × 15 | Clinical verification |
 | **Total** | **~21,000** | After dedup |
 
-**IC50 threshold:** ≤1,000 nM = cardiotoxic (label=1)  
+**IC50 threshold:** ≤1,000 nM = cardiotoxic (label=1) 
+ 
 **Ambiguous zone** (1,000–10,000 nM) **excluded** from training.
 
 ### Validation
