@@ -128,3 +128,11 @@ python main.py serve
 2. Sanguinetti & Tristani-Firouzi. *hERG potassium channels and cardiac arrhythmia.* Nature. 2006;440:463-469.
 3. [ChEMBL database](https://www.ebi.ac.uk/chembl/)
 4. [Tox21 Challenge](https://tripod.nih.gov/tox21/challenge/)
+
+## 🔮 Roadmap & Future Work
+
+While the current pipeline demonstrates robust accuracy for standard validation sets, we are actively developing the next iteration to address known edge cases and structural blindspots in the MPNN:
+
+* **Physiological State Modeling (pH 7.4):** Integrating automated SMILES protonation (e.g., via Dimorphite-DL) prior to graph embedding. This will allow the model to recognize formal positive charges on basic nitrogens, which are critical for capturing the cation-π interactions that drive hERG channel blockade.
+* **Continuous Risk Scoring (pIC50):** Transitioning the MPNN architecture from binary IC50 classification to continuous pIC50 regression. This will resolve the current "ambiguous zone" (1,000–10,000 nM) blindspot, providing more accurate, gradient-based risk assessments for borderline compounds like Verapamil.
+* **3D-Aware Message Passing:** Upgrading the 2D topological graph convolution to incorporate 3D spatial coordinate embeddings. By feeding the ETKDG-generated conformations directly into the neural network, the model will better differentiate between geometrically distinct targets (e.g., L-type calcium channels vs. hERG) that share similar 2D lipophilic pharmacophores.
