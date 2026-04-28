@@ -46,7 +46,7 @@ cd backend
 pip install -r requirements.txt
 python main.py
 ```
-The backend will start on `http://localhost:8000`.
+The backend will start on `http://localhost:7860`.
 
 ### 2. Frontend Setup
 ```bash
@@ -99,7 +99,7 @@ Combined dataset from three sources:
 | **Total** | **~21,000** | After dedup |
 
 **IC50 threshold:** ≤1,000 nM = cardiotoxic (label=1) 
- 
+
 **Ambiguous zone** (1,000–10,000 nM) **excluded** from training.
 
 ### Validation

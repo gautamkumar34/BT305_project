@@ -20,6 +20,7 @@ from src.embedding import MolecularEmbedder
 from src.similarity import MolecularSimilarity
 from src.scoring import SimilarityScorer
 from src.validation import ToxicityValidator
+from src.api import app
 
 # Configure logging
 logging.basicConfig(
@@ -104,9 +105,8 @@ def main():
         print(json.dumps(results, indent=2))
     elif args.command == "serve":
         import uvicorn
-        from src.api import app
-        logger.info("Starting API server on http://0.0.0.0:8000")
-        uvicorn.run(app, host="0.0.0.0", port=8000)
+        logger.info("Starting API server on http://0.0.0.0:7860")
+        uvicorn.run(app, host="0.0.0.0", port=7860)
     else:
         parser.print_help()
 
