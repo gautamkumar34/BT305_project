@@ -1,3 +1,12 @@
+---
+title: BioTransformer API
+emoji: 🧬
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+app_port: 7860
+---
 # BioTransformer: Ligand-Based Drug Similarity & Cardiotoxicity Pipeline
 
 BioTransformer is a production-grade computational chemistry pipeline designed for ligand-based drug similarity analysis and cardiotoxicity validation. It combines 2D topological fingerprints with 3D geometric shape overlap to provide a robust estimation of molecular similarity.
