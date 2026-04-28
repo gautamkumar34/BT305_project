@@ -1,3 +1,4 @@
+import * as $3Dmol from '3dmol/build/3Dmol.js';
 import React, { useEffect, useRef, useState } from 'react';
 
 const StructureViewer = ({ molA, molB, alignmentData, loading }) => {
@@ -46,7 +47,7 @@ const StructureViewer = ({ molA, molB, alignmentData, loading }) => {
 
     try {
       if (!viewerInstance.current) {
-        viewerInstance.current = window.$3Dmol.createViewer(viewerRef.current, {
+        viewerInstance.current = $3Dmol.createViewer(viewerRef.current, {
           backgroundColor: 'white',
         });
       }
