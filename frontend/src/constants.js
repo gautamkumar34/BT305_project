@@ -38,4 +38,10 @@ export const TEST_CASES = [
     smiles_a: 'CC(=O)Oc1ccccc1C(=O)O',
     smiles_b: 'CC(C)Cc1ccc(C(C)C(=O)O)cc1',
   },
+  {
+    id: 'astemizole_loratadine',
+    label: 'hERG Litmus Test (Astemizole vs. Loratadine)',
+    smiles_a: 'COc1ccc(CCN(C)C2CCN(Cc3nc4ccccc4[nH]3)CC2)cc1',
+    smiles_b: 'CCOC(=O)N1CCC(=C2c3ccc(Cl)cc3CCc4cccnc24)CC1',
+  },
 ]

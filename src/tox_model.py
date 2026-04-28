@@ -28,8 +28,22 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+# macOS Apple Silicon OpenBLAS / Python 3.13 Thread/Fork Deadlock Workarounds
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+
 import numpy as np
 import pandas as pd
+
+# MacOS Python 3.13 Apple Silicon Deadlock Fix
+# RDKit AtomPairs triggers OpenBLAS/OpenMP fork deadlocks when imported dynamically by aimsim/chemprop.
+# Importing them here forces the cache to build before threads are spawned.
+import rdkit.Chem.AtomPairs.Pairs
+import rdkit.Chem.AtomPairs.Torsions
 
 logger = logging.getLogger(__name__)
 
@@ -88,14 +102,16 @@ def train_and_save_model(
     from chemprop.nn import BondMessagePassing, BinaryClassificationFFN, MeanAggregation
     import lightning as L
 
+    logger.info("Initializing train dataset datapoints (this may take a minute...)")
     # Build datasets
     train_data = [
-        MoleculeDatapoint(smiles=row["smiles"], y=[row["label"]])
+        MoleculeDatapoint.from_smi(row["smiles"], y=np.array([row["label"]]))
         for _, row in train_df.iterrows()
         if pd.notna(row["smiles"])
     ]
+    logger.info("Initializing val dataset datapoints...")
     val_data = [
-        MoleculeDatapoint(smiles=row["smiles"], y=[row["label"]])
+        MoleculeDatapoint.from_smi(row["smiles"], y=np.array([row["label"]]))
         for _, row in val_df.iterrows()
         if pd.notna(row["smiles"])
     ]
@@ -103,11 +119,11 @@ def train_and_save_model(
     train_dataset = MoleculeDataset(train_data)
     val_dataset = MoleculeDataset(val_data)
 
-    train_loader = build_dataloader(train_dataset, shuffle=True, batch_size=50)
-    val_loader = build_dataloader(val_dataset, shuffle=False, batch_size=50)
+    train_loader = build_dataloader(train_dataset, shuffle=True, batch_size=50, num_workers=0)
+    val_loader = build_dataloader(val_dataset, shuffle=False, batch_size=50, num_workers=0)
 
     # Build MPNN
-    mp = BondMessagePassing(hidden_dim=300, depth=3, dropout=0.2)
+    mp = BondMessagePassing(d_h=300, depth=3, dropout=0.2)
     agg = MeanAggregation()
     ffn = BinaryClassificationFFN()
 
@@ -129,7 +145,8 @@ def train_and_save_model(
         max_epochs=epochs,
         enable_progress_bar=True,
         enable_model_summary=True,
-        accelerator="auto",
+        accelerator="cpu",
+        devices=1,
         default_root_dir=model_dir,
         enable_checkpointing=True,
         logger=False,
@@ -249,9 +266,9 @@ class ToxicityPredictor:
             import torch
             from chemprop.data import MoleculeDatapoint, MoleculeDataset, build_dataloader
 
-            datapoint = MoleculeDatapoint(smiles=smiles.strip())
+            datapoint = MoleculeDatapoint.from_smi(smiles.strip())
             dataset = MoleculeDataset([datapoint])
-            loader = build_dataloader(dataset, shuffle=False, batch_size=1)
+            loader = build_dataloader(dataset, shuffle=False, batch_size=1, num_workers=0)
 
             with torch.no_grad():
                 for batch in loader:

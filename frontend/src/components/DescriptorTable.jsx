@@ -16,7 +16,7 @@ const DescriptorTable = ({ results }) => {
     const num = parseFloat(val);
     if (isNaN(num)) return <span className="text-slate-300">—</span>;
 
-    const formatted = num > 0 ? `+${num.toFixed(type === 'fraction_csp3' ? 3 : 2)}` : num.toFixed(type === 'fraction_csp3' ? 3 : 2);
+    const formatted = num > 0 ? `+${num.toFixed(2)}` : num.toFixed(2);
     
     let colorClass = 'text-slate-400'; // neutral
     if (type === 'tpsa') {
@@ -68,16 +68,16 @@ const DescriptorTable = ({ results }) => {
     },
     {
       label: "Rotatable Bonds",
-      a: null,
-      b: null,
+      a: safeNum(descriptors_a?.rotatable_bonds, 0),
+      b: safeNum(descriptors_b?.rotatable_bonds, 0),
       delta: descriptor_delta?.rotatable_bonds,
       deltaType: "neutral"
     },
     {
       label: "Fraction CSP3",
-      a: null,
-      b: null,
-      delta: safeNum(descriptor_delta?.fraction_csp3, 3),
+      a: safeNum(descriptors_a?.fsp3, 2),
+      b: safeNum(descriptors_b?.fsp3, 2),
+      delta: descriptor_delta?.fsp3,
       deltaType: "neutral"
     }
   ];

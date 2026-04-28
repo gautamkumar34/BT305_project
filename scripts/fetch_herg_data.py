@@ -2,8 +2,8 @@
 Fetch and assemble hERG cardiotoxicity training dataset.
 
 Data sources:
-  1. ChEMBL — three hERG-related targets (CHEMBL240, CHEMBL4282, CHEMBL3307)
-  2. Tox21 — NIH screening dataset (NR-hERG column)
+  1. ChEMBL REST API — three hERG-related targets (direct HTTP, limit=1000/page)
+  2. Tox21 — NIH screening dataset (via requests to bypass SSL issues)
   3. Curated ground truth — pharmacologically verified molecules
 
 Labeling:
@@ -12,18 +12,25 @@ Labeling:
   1000 < IC50 < 10000 → EXCLUDED (ambiguous zone)
 
 Output: data/herg_training_final.csv  (smiles, label, source)
-
-Reference:
-  Yang et al. J Chem Inf Model 2019;59(8):3370-3388.
-  Sanguinetti & Tristani-Firouzi, Nature 2006;440:463-9.
 """
 
-import pandas as pd
-import numpy as np
 import logging
 import os
 import gzip
 import io
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# macOS Apple Silicon OpenBLAS / Python 3.13 Thread/Fork Deadlock Workarounds
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+
+import pandas as pd
+import numpy as np
+import requests
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,7 +63,7 @@ def deduplicate_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ─────────────────────────────────────────────────────────
-# SOURCE 1 — ChEMBL Multi-Assay Fetch
+# SOURCE 1 — ChEMBL REST API (direct HTTP, fast pagination)
 # ─────────────────────────────────────────────────────────
 
 CHEMBL_TARGETS = {
@@ -65,81 +72,111 @@ CHEMBL_TARGETS = {
     "CHEMBL3307": "IKr potassium channel",
 }
 
+CHEMBL_API_BASE = "https://www.ebi.ac.uk/chembl/api/data/activity.json"
+
 
 def fetch_chembl_target(target_id: str, max_records: int = 8000) -> pd.DataFrame:
-    """Fetch IC50 data for one ChEMBL target with ambiguous zone exclusion."""
-    from chembl_webresource_client.new_client import new_client
-
-    activity = new_client.activity
+    """Fetch IC50 data via ChEMBL REST API with large page sizes."""
     logger.info(f"Fetching {target_id} ({CHEMBL_TARGETS.get(target_id, '')})...")
 
-    results = activity.filter(
-        target_chembl_id=target_id,
-        standard_type="IC50",
-        standard_units="nM",
-    ).only([
-        "molecule_chembl_id",
-        "canonical_smiles",
-        "standard_value",
-        "standard_relation",
-    ])
-
     records = []
-    for i, r in enumerate(results):
-        if i >= max_records:
-            break
+    offset = 0
+    page_size = 1000  # Much faster than default 20
 
-        smi = r.get("canonical_smiles")
-        val = r.get("standard_value")
-        rel = r.get("standard_relation", "=")
-
-        if not smi or val is None:
-            continue
-        if rel not in ("=", "<", ">", "<=", ">="):
-            continue
+    while len(records) < max_records:
+        params = {
+            "target_chembl_id": target_id,
+            "standard_type": "IC50",
+            "standard_units": "nM",
+            "limit": page_size,
+            "offset": offset,
+            "format": "json",
+        }
 
         try:
-            ic50 = float(val)
-        except (ValueError, TypeError):
-            continue
+            resp = requests.get(CHEMBL_API_BASE, params=params, timeout=60)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as e:
+            logger.warning(f"  API error at offset {offset}: {e}")
+            break
 
-        # Ambiguous zone exclusion: 1000 < IC50 < 10000 → skip
-        if 1000 < ic50 < 10000:
-            continue
+        activities = data.get("activities", [])
+        if not activities:
+            break
 
-        can_smi = canonicalize_smiles(smi)
-        if can_smi is None:
-            continue
+        for r in activities:
+            if len(records) >= max_records:
+                break
 
-        if ic50 <= 1000:
-            label = 1  # toxic
-        else:
-            label = 0  # safe (>= 10000)
+            smi = r.get("canonical_smiles")
+            val = r.get("standard_value")
+            rel = r.get("standard_relation", "=")
 
-        records.append({
-            "smiles": can_smi,
-            "label": label,
-            "source": f"ChEMBL_{target_id}",
-        })
+            if not smi or val is None:
+                continue
+            if rel not in ("=", "<", ">", "<=", ">="):
+                continue
+
+            try:
+                ic50 = float(val)
+            except (ValueError, TypeError):
+                continue
+
+            # Ambiguous zone exclusion
+            if 1000 < ic50 < 10000:
+                continue
+
+            can_smi = canonicalize_smiles(smi)
+            if can_smi is None:
+                continue
+
+            if ic50 <= 1000:
+                label = 1  # toxic
+            else:
+                label = 0  # safe (>= 10000)
+
+            records.append({
+                "smiles": can_smi,
+                "label": label,
+                "source": f"ChEMBL_{target_id}",
+            })
+
+        logger.info(f"  {target_id}: page offset={offset}, total records so far: {len(records)}")
+
+        # Check if there are more pages
+        next_url = data.get("page_meta", {}).get("next")
+        if not next_url:
+            break
+        offset += page_size
 
     df = pd.DataFrame(records)
-    logger.info(
-        f"  {target_id}: {len(df)} records "
-        f"(toxic={df['label'].sum()}, safe={(df['label']==0).sum()})"
-    )
+    if len(df) > 0:
+        toxic_count = df['label'].sum()
+        safe_count = (df['label'] == 0).sum()
+        logger.info(f"  {target_id}: {len(df)} total (toxic={toxic_count}, safe={safe_count})")
+    else:
+        logger.warning(f"  {target_id}: 0 records fetched")
     return df
 
 
 def fetch_chembl_multi_assay(max_per_target: int = 8000) -> pd.DataFrame:
-    """Fetch from all three ChEMBL targets and combine."""
+    """Fetch from all three ChEMBL targets in parallel."""
     dfs = []
-    for target_id in CHEMBL_TARGETS:
-        try:
-            df = fetch_chembl_target(target_id, max_records=max_per_target)
-            dfs.append(df)
-        except Exception as e:
-            logger.error(f"Failed to fetch {target_id}: {e}")
-            continue
+
+    # Parallel fetch for speed
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(fetch_chembl_target, tid, max_per_target): tid
+            for tid in CHEMBL_TARGETS
+        }
+        for future in as_completed(futures):
+            tid = futures[future]
+            try:
+                df = future.result()
+                dfs.append(df)
+            except Exception as e:
+                logger.error(f"Failed to fetch {tid}: {e}")
 
     if not dfs:
         logger.error("No ChEMBL data fetched!")
@@ -159,25 +196,40 @@ def fetch_chembl_multi_assay(max_per_target: int = 8000) -> pd.DataFrame:
 # ─────────────────────────────────────────────────────────
 
 def fetch_tox21_herg() -> pd.DataFrame:
-    """Download Tox21 dataset and extract NR-hERG column."""
-    import urllib.request
-
+    """Download Tox21 dataset using requests (handles SSL properly)."""
     urls = [
         "https://deepchemdata.s3-us-west-1.amazonaws.com/datasets/tox21.csv.gz",
+        "https://raw.githubusercontent.com/deepchem/deepchem/master/datasets/tox21.csv.gz",
     ]
 
     tox21_df = None
     for url in urls:
         try:
             logger.info(f"Downloading Tox21 from {url}...")
-            response = urllib.request.urlopen(url, timeout=60)
-            data = response.read()
+            resp = requests.get(url, timeout=60, verify=True)
+            resp.raise_for_status()
+            data = resp.content
 
             if url.endswith(".gz"):
                 data = gzip.decompress(data)
             tox21_df = pd.read_csv(io.BytesIO(data))
-            logger.info(f"Tox21 downloaded: {len(tox21_df)} rows")
+            logger.info(f"Tox21 downloaded: {len(tox21_df)} rows, columns: {list(tox21_df.columns)}")
             break
+        except requests.exceptions.SSLError:
+            # Retry without SSL verification as fallback
+            try:
+                logger.warning(f"SSL error, retrying without verification...")
+                resp = requests.get(url, timeout=60, verify=False)
+                resp.raise_for_status()
+                data = resp.content
+                if url.endswith(".gz"):
+                    data = gzip.decompress(data)
+                tox21_df = pd.read_csv(io.BytesIO(data))
+                logger.info(f"Tox21 downloaded (no SSL verify): {len(tox21_df)} rows")
+                break
+            except Exception as e2:
+                logger.warning(f"Tox21 download failed from {url}: {e2}")
+                continue
         except Exception as e:
             logger.warning(f"Tox21 download failed from {url}: {e}")
             continue
@@ -186,34 +238,23 @@ def fetch_tox21_herg() -> pd.DataFrame:
         logger.error("All Tox21 download URLs failed")
         return pd.DataFrame(columns=["smiles", "label", "source"])
 
-    # Find the SMILES column
-    smiles_col = None
-    for col in tox21_df.columns:
-        if "smiles" in col.lower():
-            smiles_col = col
-            break
+    # Find SMILES and hERG columns
+    smiles_col = next((c for c in tox21_df.columns if "smiles" in c.lower()), None)
+    herg_col = next((c for c in tox21_df.columns if "herg" in c.lower()), None)
 
     if smiles_col is None:
-        logger.error(f"No SMILES column in Tox21. Columns: {list(tox21_df.columns)}")
+        logger.error(f"No SMILES column found. Columns: {list(tox21_df.columns)}")
         return pd.DataFrame(columns=["smiles", "label", "source"])
-
-    # Find NR-hERG column (or SR-hERG or any hERG column)
-    herg_col = None
-    for col in tox21_df.columns:
-        if "herg" in col.lower():
-            herg_col = col
-            break
 
     if herg_col is None:
-        logger.warning(f"No hERG column in Tox21. Columns: {list(tox21_df.columns)}")
-        # Use NR-AR or other available toxicity endpoint as fallback
+        logger.warning(f"No hERG column found. Columns: {list(tox21_df.columns)}")
         return pd.DataFrame(columns=["smiles", "label", "source"])
 
-    logger.info(f"Using Tox21 column: {herg_col}")
+    logger.info(f"Using Tox21 columns: smiles={smiles_col}, herg={herg_col}")
 
-    # Filter: 1.0 = toxic, 0.0 = safe, NaN = exclude
-    valid = tox21_df[[smiles_col, herg_col]].dropna(subset=[herg_col]).copy()
-    valid = valid[valid[herg_col].isin([0.0, 1.0])].copy()
+    # Filter valid rows
+    valid = tox21_df[[smiles_col, herg_col]].dropna(subset=[herg_col])
+    valid = valid[valid[herg_col].isin([0.0, 1.0])]
 
     records = []
     for _, row in valid.iterrows():
@@ -277,8 +318,6 @@ CURATED_CORRECTIONS = [
 
 def build_correction_set(weight: int = 15) -> pd.DataFrame:
     """Build the curated correction set with validation."""
-    from rdkit import Chem
-
     valid_records = []
     for entry in CURATED_CORRECTIONS:
         can_smi = canonicalize_smiles(entry["smiles"])
@@ -295,7 +334,7 @@ def build_correction_set(weight: int = 15) -> pd.DataFrame:
     correction_df = pd.DataFrame(valid_records)
     logger.info(f"Curated set: {len(correction_df)} valid molecules")
 
-    # Weight by repeating (15x)
+    # Weight by repeating
     weighted = pd.concat([correction_df] * weight, ignore_index=True)
     logger.info(f"Weighted correction set: {len(weighted)} rows (×{weight})")
     return weighted
@@ -311,22 +350,17 @@ def assemble_final_dataset(
     correction_weighted_df: pd.DataFrame,
     output_path: str = "data/herg_training_final.csv"
 ) -> pd.DataFrame:
-    """Combine all sources, deduplicate base data, add corrections, shuffle."""
+    """Combine all sources, deduplicate, add corrections, shuffle."""
 
-    # Combine ChEMBL + Tox21 (deduplicate between them)
     base = pd.concat([chembl_df, tox21_df], ignore_index=True)
     base = deduplicate_df(base)
 
-    unique_before = len(base)
-
-    # Add weighted correction set (these override any conflicting labels)
     final = pd.concat([base, correction_weighted_df], ignore_index=True)
     final = final.sample(frac=1, random_state=42).reset_index(drop=True)
 
-    # Report
     total = len(final)
-    toxic = final["label"].sum()
-    safe = (final["label"] == 0).sum()
+    toxic = int(final["label"].sum())
+    safe = int((final["label"] == 0).sum())
     unique = final["smiles"].nunique()
 
     logger.info("=" * 60)
@@ -345,11 +379,9 @@ def assemble_final_dataset(
             f"ChEMBL: {len(chembl_df)}, Tox21: {len(tox21_df)}"
         )
 
-    # Save
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     final.to_csv(output_path, index=False)
     logger.info(f"Saved to {output_path}")
-
     return final
 
 
@@ -358,18 +390,13 @@ def assemble_final_dataset(
 # ─────────────────────────────────────────────────────────
 
 def compute_features(df: pd.DataFrame) -> tuple:
-    """
-    Compute RDKit descriptors for each SMILES.
-    Returns X (feature matrix) and y (labels).
-    Kept for backward compatibility with src/model.py.
-    """
+    """Compute RDKit descriptors. Kept for backward compatibility."""
     from rdkit import Chem
     from src.descriptors import compute_descriptors
     import numpy as np
 
     X_rows, y_rows = [], []
     failed = 0
-
     for _, row in df.iterrows():
         mol = Chem.MolFromSmiles(row["smiles"])
         if mol is None:
@@ -387,7 +414,6 @@ def compute_features(df: pd.DataFrame) -> tuple:
             y_rows.append(row["label"])
         except Exception:
             failed += 1
-
     logger.info(f"Feature extraction: {len(X_rows)} ok, {failed} failed")
     return np.array(X_rows, dtype=float), np.array(y_rows)
 
@@ -397,7 +423,6 @@ def compute_features(df: pd.DataFrame) -> tuple:
 # ─────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # Phase 1: Fetch data from all sources
     logger.info("Phase 1: Fetching ChEMBL multi-assay data...")
     chembl_df = fetch_chembl_multi_assay(max_per_target=8000)
 
@@ -407,14 +432,12 @@ if __name__ == "__main__":
     logger.info("Phase 3: Building curated correction set...")
     correction_df = build_correction_set(weight=15)
 
-    # Phase 2: Assemble final dataset
     logger.info("Phase 4: Assembling final dataset...")
     final_df = assemble_final_dataset(
         chembl_df, tox21_df, correction_df,
         output_path="data/herg_training_final.csv"
     )
 
-    # Phase 3: Train Chemprop model
     logger.info("Phase 5: Training Chemprop model...")
     try:
         from src.tox_model import train_and_save_model
@@ -424,8 +447,8 @@ if __name__ == "__main__":
             epochs=30
         )
         logger.info("Training complete. Restart server to load new model.")
-        logger.info("Command: python3 main.py serve")
     except Exception as e:
         logger.error(f"Training failed: {e}")
+        import traceback
+        traceback.print_exc()
         logger.info("Dataset saved. You can train manually later.")
-        raise

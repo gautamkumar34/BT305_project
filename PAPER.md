@@ -20,28 +20,31 @@ Nine physicochemical descriptors were extracted, including Molecular Weight (MW)
 A rule-based heuristic was applied: molecules with high lipophilicity (logP > 4.5) and low polarity (TPSA < 75 Å²) were flagged as `HIGH_RISK`, reflecting the classic hERG pharmacophore of a lipophilic base. Conversely, high polarity (TPSA ≥ 75 Å² and HBD ≥ 2) was used as a marker for `LOW_RISK`.
 
 ### 2.5 ML Model
-A Random Forest classifier was trained on 100 synthetic samples generated from the aforementioned heuristics. The model was evaluated using 5-fold cross-validation, achieving a CV ROC-AUC of approximately 0.85–0.92 (after introducing controlled feature overlap to simulate real-world biological variance).
+A Message Passing Neural Network (MPNN) implemented via Chemprop v2 was trained on a comprehensive dataset aggregated from ChEMBL and Tox21 (~21,000 total records). Molecules with an IC50 ≤ 1,000 nM were classified as cardiotoxic, while those with IC50 > 10,000 nM were deemed safe (the ambiguous intermediate zone was excluded). The graph-based neural network performs neighborhood aggregation to capture critical atom-level electronic environments, such as nitrogen basicity and electron-withdrawing group effects, replacing the legacy rule-based heuristics.
 
 ## 3. Results
 
-The pipeline was validated against three distinct molecular pairs. The results are summarized in Table 1.
+The pipeline was validated against four distinct molecular pairs. The results are summarized in Table 1.
 
 **Table 1: Validation Results**
 | Case | 2D Tanimoto | Shape 3D | Risk A | Risk B | ML Correct |
 |------|-------------|----------|--------|--------|------------|
 | Terfenadine/Fexofenadine | 0.804 | 0.323 | HIGH | LOW | ✓ |
 | Cisapride/Domperidone    | 0.207 | 0.295 | MODERATE | HIGH | ✓ |
-| Aspirin/Ibuprofen        | 0.195 | 0.435 | MODERATE | MODERATE | ✓ |
+| Aspirin/Ibuprofen        | 0.195 | 0.435 | LOW | LOW | ✓ |
+| Astemizole/Loratadine    | 0.120 | 0.000 | HIGH | LOW | ✓ |
 
-For the Terfenadine/Fexofenadine pair, the system correctly identified a high 2D similarity (0.804) but a significantly lower 3D overlap (0.323). The transition from Terfenadine to Fexofenadine involved a significant TPSA increase (+37.3 Å²) and a logP decrease (-0.94), which the pipeline correctly associated with a reduction in predicted membrane permeability and hERG risk. The ML model correctly ranked the toxicity probability for all three cases.
+For the Terfenadine/Fexofenadine pair, the system correctly identified a high 2D similarity (0.804) but a significantly lower 3D overlap (0.323). The transition from Terfenadine to Fexofenadine involved a significant TPSA increase (+37.3 Å²) and a logP decrease (-0.94), which the pipeline correctly associated with a reduction in predicted membrane permeability and hERG risk. 
+
+Furthermore, the MPNN model demonstrated the ability to learn complex electronic effects by correctly identifying Astemizole as highly toxic (>98% probability) while predicting its structural relative Loratadine, which features a deactivated carbamate nitrogen, as safe (<6% probability).
 
 ## 4. Discussion
-The results demonstrate that 2D similarity alone is insufficient for toxicity inference; the Terfenadine case shows that a small structural change (addition of a carboxylic acid) drastically alters the safety profile despite high topological similarity. The TPSA ≥ 75 Å² rule aligns with published hERG safety margins (Aronov, 2008). 
+The results demonstrate that 2D similarity alone is insufficient for toxicity inference; the Terfenadine case shows that a small structural change (addition of a carboxylic acid) drastically alters the safety profile despite high topological similarity. The MPNN successfully captured non-linear electronic features that basic lipophilicity descriptors miss.
 
-Limitations include the use of synthetic training data and the reliance on neutral-form logP. Unlike docking approaches, this pipeline is purely ligand-based and does not utilize the hERG protein structure. However, its computational efficiency makes it ideal for initial library screening.
+Limitations include the reliance on neutral-form SMILES and in vitro IC50 training data rather than in vivo clinical outcomes. Unlike docking approaches, this pipeline is purely ligand-based and does not utilize the hERG protein structure. However, its computational efficiency makes it ideal for initial library screening.
 
 ## 5. Conclusion
-We implemented a robust cheminformatics pipeline that successfully differentiates between cardiotoxic and safe analogs. The correct classification of the Terfenadine/Fexofenadine case validates the integration of 3D shape analysis and physicochemical heuristics for hERG liability prediction.
+We implemented a robust cheminformatics pipeline that successfully differentiates between cardiotoxic and safe analogs. The integration of 3D shape analysis and a highly-trained graph neural network (MPNN) provides a powerful, fast, and scalable method for hERG liability prediction.
 
 ## References
 1. Landrum G. RDKit: Open-source cheminformatics. https://www.rdkit.org

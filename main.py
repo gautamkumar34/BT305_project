@@ -3,6 +3,15 @@ Main entry point for the Drug Similarity and Cardiotoxicity Pipeline.
 Provides CLI interface for molecule comparison and validation.
 """
 
+import os
+# macOS Apple Silicon OpenBLAS / Python 3.13 Thread/Fork Deadlock Workarounds
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+
 import argparse
 import json
 import logging
@@ -31,15 +40,19 @@ def run_comparison(smiles_a: str, smiles_b: str, alpha: float, beta: float):
     scorer = SimilarityScorer(alpha=alpha, beta=beta)
     
     # 1. Generate 3D Embeddings
-    mol_a_3d = embedder.embed_molecule(smiles_a)
-    mol_b_3d = embedder.embed_molecule(smiles_b)
+    res_a = embedder.embed_molecule(smiles_a)
+    res_b = embedder.embed_molecule(smiles_b)
     
-    if mol_a_3d is None or mol_b_3d is None:
+    if res_a is None or res_b is None:
         return {"error": "Failed to generate 3D embeddings for one or both molecules"}
+        
+    mol_a_3d, conf_a, _ = res_a
+    mol_b_3d, conf_b, _ = res_b
     
     # 2. Compute Combined Similarity
     sim_results = sim_calc.compute_combined_similarity(
-        smiles_a, smiles_b, mol_a_3d, mol_b_3d
+        smiles_a, smiles_b, mol_a_3d, mol_b_3d,
+        conf_id_a=conf_a, conf_id_b=conf_b
     )
     
     # 3. Apply Scoring
