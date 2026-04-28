@@ -67,7 +67,7 @@ The system is validated using the Terfenadine case:
 ## 🔬 Scientific Methodology
 
 The final similarity score is calculated as:
-$$Score = \alpha \cdot \text{Tanimoto}_{2D} + \beta \cdot \text{Shape}_{3D}$$
+$$\text{Score} = \alpha \cdot \text{Tanimoto}_{2D} + \beta \cdot \text{Shape}_{3D}$$
 
 Where:
 - $\text{Tanimoto}_{2D}$ captures the presence of specific chemical substructures.
