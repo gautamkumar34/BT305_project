@@ -22,7 +22,7 @@ const App = () => {
   const [backendStatus, setBackendStatus] = useState('checking');
 
   // Safe fallback for API URL
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:7860';
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://gautam34-biotransformer-api.hf.space';
 
   useEffect(() => {
     const verifyBackend = async () => {
