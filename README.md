@@ -11,32 +11,42 @@ app_port: 7860
 
 BioTransformer is a production-grade computational chemistry pipeline designed for ligand-based drug similarity analysis and cardiotoxicity validation. It combines 2D topological fingerprints with 3D geometric shape overlap to provide a robust estimation of molecular similarity.
 
-## 🚀 Features
+## 🚀 Key Features
 
-- **3D Conformation Generation**: Uses RDKit's ETKDG algorithm with UFF/MMFF optimization to generate low-energy 3D structures.
-- **Dual Similarity Scoring**:
-  - **2D Similarity**: Tanimoto coefficient based on Morgan Fingerprints (Radius 2).
-  - **3D Similarity**: Shape-based overlap scoring using RDKit alignment tools.
-- **Configurable Scoring**: Adjustable weights ($\alpha$ and $\beta$) to balance topological vs. geometric similarity.
-- **Cardiotoxicity Validation**: Built-in validation for known clinical cases (e.g., Terfenadine vs. Fexofenadine).
-- **Interactive Dashboard**: 
-  - 2D structure rendering via RDKit.js.
-  - 3D molecular alignment visualization via 3Dmol.js.
-  - Physicochemical property profiling (MW, LogP, HBD, HBA, TPSA).
-  - AI-driven interpretability and risk assessment.
+### 1. Dual-Engine Generative Simulator
+- **Liver Simulator (Hepatic Clearance):** Maps standard metabolic degradation via destructive Phase I (oxidation, dealkylation) and Phase II (glucuronidation) reaction rules.
+- **MedChem Generator:** Explores local chemical space using constructive transformations (e.g., fluorination, methylation) to evolve parent drugs into safer analogs.
+- **Dynamic Lipinski Filtering:** Silently drops generated analogs that exceed a maximum of one Rule of 5 violation (MW > 500, LogP > 5, HBD > 5, HBA > 10) to ensure oral bioavailability.
+
+### 2. Interactive DAG Visualization (Metabolism Tree)
+- **Real-Time Risk Mapping:** Every node in the generated trajectory is evaluated asynchronously by the MPNN, assigning a visual risk border (Green for <50% hERG risk, Red for ≥50% risk).
+- **Shape-Coded Pathways:** UI distinguishes between Initial Molecules (Diamond), Phase I/Minor edits (Circle), and Phase II/Major edits (Hexagon).
+- **Interactive Exploration:** Click any generated metabolite to set it as the new active drug and cascade a fresh analysis.
+
+### 3. Dual Similarity Scoring & 3D Conformations
+- **2D Similarity:** Tanimoto coefficient based on Morgan Fingerprints (Radius 2). 
+- **3D Similarity:** Shape-based volumetric overlap using the Open3DAlign (O3A) algorithm.
+- **3D Conformations:** RDKit's ETKDG v3 algorithm with MMFF94s force field optimization. 
+
+### 4. Interactive Dashboard & Analytics
+- **Live Visualizations:** 2D structure rendering via RDKit.js and 3D molecular alignment via 3Dmol.js. 
+- **Physicochemical Profiling:** Radar and table views of 9 key descriptors (MW, Crippen logP, TPSA, HBD, HBA, Rotatable Bonds, Aromatic Rings, Fraction CSP3). 
+- **Vercel Analytics:** Integrated tracking for production usage monitoring.
 
 ## 🛠️ Architecture
 
-### Backend (FastAPI)
-- `embedding.py`: Handles 3D conformation generation and energy minimization.
-- `similarity.py`: Computes 2D Tanimoto and 3D shape overlap.
-- `scoring.py`: Implements the dual-scoring logic and risk flagging.
-- `validation.py`: Manages known toxicity datasets for pipeline verification.
+### Backend (FastAPI / Hugging Face Spaces)
+- `api.py`: FastAPI entry point with CORS enabled for cross-origin frontend requests.
+- `embedding.py`: Handles 3D conformation generation and energy minimization. 
+- `similarity.py`: Computes 2D Tanimoto and 3D shape overlap. 
+- `scoring.py`: Implements dual-scoring logic, DAG generation rules, and risk flagging. 
+- `tox_model.py`: Handles the Chemprop Message Passing Neural Network (MPNN) inference.
 
-### Frontend (React + Vite)
-- **State Management**: React Hooks for real-time analysis updates.
-- **Visualization**: RDKit.js (WASM) for 2D and 3Dmol.js for 3D rendering.
-- **Styling**: Tailwind CSS for a professional, scientific dashboard.
+### Frontend (React + Vite + Vercel)
+- **State Management:** React Hooks mapped to dynamic backend endpoints.
+- **Network Graphs:** `reactflow` paired with `dagre` for automated, hierarchical DAG layout generation.
+- **Styling:** Tailwind CSS with Lucide-React iconography.
+- **Deployment:** Hosted on Vercel with automatic CI/CD and `@vercel/analytics` integration.
 
 ## 📦 Installation & Setup
 
