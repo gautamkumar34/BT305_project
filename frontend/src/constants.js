@@ -4,6 +4,7 @@ export const ENDPOINTS = {
   HEALTH: '/health',
   SIMILARITY: '/compare',
   VALIDATE: '/validate',
+  METABOLIZE: '/metabolize',
 }
 
 export const DEFAULT_CONFIG = {

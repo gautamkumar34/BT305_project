@@ -58,4 +58,18 @@ export const checkHealth = async () => {
   }
 };
 
+export const predictMetabolism = async ({ smiles, max_depth, mode }) => {
+  try {
+    const response = await api.post(ENDPOINTS.METABOLIZE, {
+      smiles,
+      max_depth,
+      mode,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error predicting metabolism:', error);
+    throw error.response?.data?.detail || new Error('Failed to generate metabolic network');
+  }
+};
+
 export default api;
