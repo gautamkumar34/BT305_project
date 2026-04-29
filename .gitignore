@@ -30,7 +30,6 @@ frontend.log
 .cursor/
 
 ## ML models (large, regenerated via training)
-models/
 
 ## Generated data (can be re-fetched)
 data/herg_training_final.csv
