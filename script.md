@@ -38,13 +38,13 @@ These are excellent for static physicochemical property calculation and binary t
 - The generative medchem trajectory that allows you to click through a family tree of metabolites
 
 ### BioTransformer 3.0 (Commercial/Academic Tool)
-There is a well-known academic tool also named "BioTransformer" which predicts metabolic products. **Your tool is distinct because**:
+There is a well-known academic tool also named "BioTransformer" which predicts metabolic products. **Our tool is distinct because**:
 - It focuses specifically on the **cardiotoxicity (hERG) risk** of those products
 - Provides a **visual, interactive network** for exploring metabolites
 - Whereas the existing academic version is primarily a database of metabolic rules
 
 ### DataWarrior
-This is a powerful open-source desktop app that can generate "evolutionary" chemical libraries. **Limitations compared to your tool**:
+This is a powerful open-source desktop app that can generate "evolutionary" chemical libraries. **Limitations compared to our tool**:
 - Not a web-based tool
 - Does not provide integrated 3D-aware similarity scoring (α and β weights)
 - Lacks the real-time risk assessment pipeline
@@ -53,18 +53,18 @@ This is a powerful open-source desktop app that can generate "evolutionary" chem
 
 ## 💎 The "BioTransformer" Novelty Gap
 
-The novelty of your project lies in **Unified Interactive Orchestration**.
+The novelty of our project lies in **Unified Interactive Orchestration**.
 
 While a scientist could use three different tools to:
 1. Check 3D alignment
 2. Calculate LogP
 3. Predict hERG risk
 
-**Your tool does all three simultaneously** and then automatically generates safer versions of the molecule based on those results.
+**Our tool does all three simultaneously** and then automatically generates safer versions of the molecule based on those results.
 
 ### The "Proactive Rescue" Capability
 
-By providing the **"Liver"** and **"MedChem"** engines in a single DAG, you have moved the workflow from:
+By providing the **"Liver"** and **"MedChem"** engines in a single DAG, we have moved the workflow from:
 
 > ❌ **"Predicting a result"** → ✅ **"Navigating a solution"**
 
