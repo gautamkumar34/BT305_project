@@ -7,7 +7,7 @@ sdk: docker
 pinned: false
 app_port: 7860
 ---
-# BioTransformer: Next-Generation Ligand-Based Drug Discovery & Metabolic Simulation
+# BioTransformer: Next-Generation Ligand-Based Drug Discovery , Metabolic Simulation & Cardiotoxicity Pipeline
 
 ## 📖 About the Project
 BioTransformer is a comprehensive computational chemistry platform built to bridge the gap between static toxicity prediction and proactive molecular optimization. Developed for the BT305 project, this tool addresses a critical bottleneck in drug development: identifying and mitigating cardiotoxicity (hERG blockade) before expensive clinical trials[cite: 2]. By integrating deep learning, 3D geometric alignment, and a generative metabolic engine, BioTransformer allows researchers to not only evaluate a molecule's risk profile but also simulate its evolutionary trajectory into safer chemical space.
@@ -45,12 +45,12 @@ https://bt-305-project.vercel.app/
 ### Backend (FastAPI / Hugging Face Spaces(Docker))
 The backend is structured to handle complex cheminformatics tasks through specialized modules:
 * `api.py`: The main FastAPI entry point managing CORS and endpoint routing.
-* `metabolism.py`: **[New]** The generative core that implements the dual-engine DAG; handles Phase I/II reactions and MedChem optimization rules[cite: 1].
-* `descriptors.py`: Responsible for calculating 9+ physicochemical properties including MW, logP, TPSA, and CSP3 fraction[cite: 1, 2].
-* `validation.py`: Manages ground-truth clinical datasets for system verification (e.g., Terfenadine/Fexofenadine)[cite: 1].
-* `tox_model.py`: Orchestrates Chemprop v2 MPNN inference for hERG risk prediction[cite: 1].
-* `embedding.py`: Handles 3D conformation generation and energy minimization using MMFF94s[cite: 1, 2].
-* `similarity.py`: Computes 2D Tanimoto and 3D Shape Tanimoto scores[cite: 1, 2].
+* `metabolism.py`: **[New]** The generative core that implements the dual-engine DAG; handles Phase I/II reactions and MedChem optimization rules.
+* `descriptors.py`: Responsible for calculating 9+ physicochemical properties including MW, logP, TPSA, and CSP3 fraction.
+* `validation.py`: Manages ground-truth clinical datasets for system verification (e.g., Terfenadine/Fexofenadine).
+* `tox_model.py`: Orchestrates Chemprop v2 MPNN inference for hERG risk prediction.
+* `embedding.py`: Handles 3D conformation generation and energy minimization using MMFF94s.
+* `similarity.py`: Computes 2D Tanimoto and 3D Shape Tanimoto scores.
 
 ### Frontend (React + Vite + Vercel)
 - **State Management:** React Hooks mapped to dynamic backend endpoints.
