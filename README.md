@@ -7,9 +7,13 @@ sdk: docker
 pinned: false
 app_port: 7860
 ---
-# BioTransformer: Ligand-Based Drug Similarity & Cardiotoxicity Pipeline
+# BioTransformer: Next-Generation Ligand-Based Drug Discovery & Metabolic Simulation
 
-BioTransformer is a production-grade computational chemistry pipeline designed for ligand-based drug similarity analysis and cardiotoxicity validation. It combines 2D topological fingerprints with 3D geometric shape overlap to provide a robust estimation of molecular similarity.
+## 📖 About the Project
+BioTransformer is a comprehensive computational chemistry platform built to bridge the gap between static toxicity prediction and proactive molecular optimization. Developed for the BT305 project, this tool addresses a critical bottleneck in drug development: identifying and mitigating cardiotoxicity (hERG blockade) before expensive clinical trials[cite: 2]. By integrating deep learning, 3D geometric alignment, and a generative metabolic engine, BioTransformer allows researchers to not only evaluate a molecule's risk profile but also simulate its evolutionary trajectory into safer chemical space.
+
+## 🧪 Introduction
+Identifying potential blockade of the human Ether-à-go-go-Related Gene (hERG) potassium channel is vital for cardiac safety[cite: 2]. Traditional 2D structural analysis often misses the nuances of how a molecule fits into the hERG pore[cite: 2]. BioTransformer provides a production-grade solution by utilizing a Message Passing Neural Network (MPNN) to capture electronic environments (like nitrogen basicity) and 3D shape overlap to capture geometric requirements[cite: 1, 2]. The addition of a "Liver" and "MedChem" simulator allows for the first time a real-time visualization of how metabolic transformations impact toxicity risk.
 
 ## 🌐 Live Demo
 https://bt-305-project.vercel.app/
@@ -38,12 +42,15 @@ https://bt-305-project.vercel.app/
 
 ## 🛠️ Architecture
 
-### Backend (FastAPI / Hugging Face Spaces)
-- `api.py`: FastAPI entry point with CORS enabled for cross-origin frontend requests.
-- `embedding.py`: Handles 3D conformation generation and energy minimization. 
-- `similarity.py`: Computes 2D Tanimoto and 3D shape overlap. 
-- `scoring.py`: Implements dual-scoring logic, DAG generation rules, and risk flagging. 
-- `tox_model.py`: Handles the Chemprop Message Passing Neural Network (MPNN) inference.
+### Backend (FastAPI / Hugging Face Spaces(Docker))
+The backend is structured to handle complex cheminformatics tasks through specialized modules:
+* `api.py`: The main FastAPI entry point managing CORS and endpoint routing.
+* `metabolism.py`: **[New]** The generative core that implements the dual-engine DAG; handles Phase I/II reactions and MedChem optimization rules[cite: 1].
+* `descriptors.py`: Responsible for calculating 9+ physicochemical properties including MW, logP, TPSA, and CSP3 fraction[cite: 1, 2].
+* `validation.py`: Manages ground-truth clinical datasets for system verification (e.g., Terfenadine/Fexofenadine)[cite: 1].
+* `tox_model.py`: Orchestrates Chemprop v2 MPNN inference for hERG risk prediction[cite: 1].
+* `embedding.py`: Handles 3D conformation generation and energy minimization using MMFF94s[cite: 1, 2].
+* `similarity.py`: Computes 2D Tanimoto and 3D Shape Tanimoto scores[cite: 1, 2].
 
 ### Frontend (React + Vite + Vercel)
 - **State Management:** React Hooks mapped to dynamic backend endpoints.
