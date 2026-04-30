@@ -11,6 +11,9 @@ app_port: 7860
 
 BioTransformer is a production-grade computational chemistry pipeline designed for ligand-based drug similarity analysis and cardiotoxicity validation. It combines 2D topological fingerprints with 3D geometric shape overlap to provide a robust estimation of molecular similarity.
 
+## 🌐 Live Demo
+https://bt-305-project.vercel.app/
+
 ## 🚀 Key Features
 
 ### 1. Dual-Engine Generative Simulator

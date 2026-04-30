@@ -44,7 +44,7 @@ const InputPanel = ({
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Molecule B (SMILES)</label>
+          <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Molecule B / Reference Ligand (SMILES)</label>
           <div className="relative">
             <input 
               type="text"
