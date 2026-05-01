@@ -62,7 +62,7 @@ The backend is structured to handle complex cheminformatics tasks through specia
 
 ### 1. Backend Setup
 ```bash
-cd backend
+# In the root directory
 pip install -r requirements.txt
 python main.py
 ```
