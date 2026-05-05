@@ -38,3 +38,4 @@ data/herg_train_split.csv
 data/herg_validation.csv
 data/herg_val_predictions.csv
 
+script.md

@@ -1,11 +1,10 @@
-# 📜 Project Script: BioTransformer
+# 📜 Project: BioTransformer
 
 ## 👥 Team Members
 
-- **Gautam Kumar**: Lead Developer & Cheminformatics Architect (MacBook Air Development Environment)
-- **Dipanshu Subodh Ojha**: Collaborative research and validation contributors
-- **Akshat Gupta**: Collaborative research and validation contributors
-- **Insaf Mo**: Collaborative research and validation contributors
+- **Gautam Kumar(230106026)**: Lead Developer & Cheminformatics Architect 
+- **Dipanshu Subodh Ojha(230106024)**: Frontend Developer
+- **Akshat Gupta(230106006)**: UI designer,Collaborative research and validation contributor
 
 ## 🎯 Objective
 
